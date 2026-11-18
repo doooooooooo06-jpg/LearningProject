@@ -1,1 +1,13 @@
-{"0": "Project Dependencies and Scripts", "1": "Shared UI Components", "2": "Catalog API and SQLite", "3": "Storefront Design Guidance", "4": "TypeScript Compiler Settings", "5": "Storefront and API Documentation", "6": "Command Safety Hook", "7": "Storefront Home and Catalog", "8": "Generated Next.js Types", "9": "Storefront Database Diagram", "10": "PostCSS Configuration", "11": "Graphify Repository Workflow"}
+{
+  "0": "Project Dependencies and Scripts",
+  "2": "Catalog API and SQLite",
+  "3": "Storefront Design Guidance",
+  "4": "TypeScript Compiler Settings",
+  "5": "Storefront and API Documentation",
+  "6": "Command Safety Hook",
+  "7": "Storefront Home and Catalog",
+  "8": "Generated Next.js Types",
+  "9": "Storefront Database Diagram",
+  "10": "PostCSS Configuration",
+  "11": "Graphify Repository Workflow"
+}

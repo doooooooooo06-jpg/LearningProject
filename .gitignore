@@ -2,6 +2,8 @@
 node_modules/
 out/
 coverage/
+playwright-report/
+test-results/
 data/*.sqlite
 data/*.sqlite-shm
 data/*.sqlite-wal
@@ -9,3 +11,9 @@ data/*.sqlite-wal
 .npm-cache/
 .agents/
 skills-lock.json
+
+# Playwright
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
