@@ -1,3 +1,4 @@
+import Link from "next/link";
 import DialogDemo from "./dialog-demo";
 
 const colors = [
@@ -28,19 +29,19 @@ const spacing = [{ n: "4", w: 12 }, { n: "8", w: 24 }, { n: "12", w: 36 }, { n: 
 export default function DesignSystemPage() {
   return <main className="ds-page">
     <aside className="ds-sidebar">
-      <a className="ds-brand" href="/"><span className="ds-brand-icon">🛒</span><span><b>Farmart</b><small>DESIGN SYSTEM</small></span></a>
+      <Link className="ds-brand" href="/"><span className="ds-brand-icon">🛒</span><span><b>Farmart</b><small>DESIGN SYSTEM</small></span></Link>
       <p className="ds-nav-label">FOUNDATIONS</p>
       <a href="#overview">Overview</a><a href="#colors">Color palette</a><a href="#type">Typography</a><a href="#spacing">Spacing & shape</a>
       <p className="ds-nav-label">LIBRARY</p>
       <a href="#components">Components</a><a href="#patterns">Market patterns</a><a href="#responsive">Responsive</a>
       <div className="ds-sidebar-note"><span>✳</span><b>Fresh by design</b><p>A practical visual language for a friendly neighborhood market.</p></div>
-      <a className="ds-back" href="/">← Back to storefront</a>
+      <Link className="ds-back" href="/">← Back to storefront</Link>
     </aside>
 
     <div className="ds-content">
-      <header className="ds-topbar"><span>Farmart / <b>Design system</b></span><a href="/">View storefront ↗</a></header>
+      <header className="ds-topbar"><span>Farmart / <b>Design system</b></span><Link href="/">View storefront ↗</Link></header>
       <section className="ds-hero" id="overview">
-        <div><span className="ds-kicker"><i /> DESIGN LANGUAGE · 2026</span><h1>Good things<br/>grow <em>together.</em></h1><p>A visual toolkit for a well-organized market. Warm, clear, and built to make every fresh find easy to shop.</p><div className="ds-hero-actions"><a href="#components" className="ds-btn ds-btn-primary">Explore components <span>↓</span></a><a href="/" className="ds-text-link">Visit the shop　↗</a></div></div>
+        <div><span className="ds-kicker"><i /> DESIGN LANGUAGE · 2026</span><h1>Good things<br/>grow <em>together.</em></h1><p>A visual toolkit for a well-organized market. Warm, clear, and built to make every fresh find easy to shop.</p><div className="ds-hero-actions"><a href="#components" className="ds-btn ds-btn-primary">Explore components <span>↓</span></a><Link href="/" className="ds-text-link">Visit the shop　↗</Link></div></div>
         <div className="ds-hero-art"><div className="ds-orbit orbit-one"/><div className="ds-orbit orbit-two"/><span className="ds-fruit fruit-1">🍋</span><span className="ds-fruit fruit-2">🍐</span><span className="ds-fruit fruit-3">🍊</span><span className="ds-fruit fruit-4">🥬</span><span className="ds-sticker">FRESH<br/>DAILY</span></div>
         <div className="ds-hero-foot"><span>01 / BRAND PRINCIPLE</span><span>Friendly · Fresh · Straightforward</span></div>
       </section>
@@ -62,10 +63,10 @@ export default function DesignSystemPage() {
         </div>
       </section>
 
-      <section className="ds-section ds-market-section" id="patterns"><div className="ds-section-head"><div><span className="ds-index">05 — IN CONTEXT</span><h2>Built for the market</h2><p>Tokens come together in the familiar rhythm of the Farmart storefront.</p></div><a href="/" className="ds-text-link">Open storefront ↗</a></div><div className="ds-market-preview"><div className="ds-market-nav"><b>🛒 Farmart</b><span>Deals Today　　Fresh Foods　　Pantry　　More</span><span>♙　♡　🛒</span></div><div className="ds-market-banner"><div><small>FRESH FROM THE FARM</small><h3>Active Summer<br/>With Juicy Milk</h3><button className="ds-btn ds-btn-light">Shop Now　→</button></div><span>🥛</span></div><div className="ds-market-categories">{["🍋", "🥖", "🦀", "🥪", "🍾", "🫘", "🥛", "🧺"].map((e, i) => <div key={i}><span>{e}</span><small>{["Fruits", "Bakery", "Seafood", "Deli", "Drinks", "Coffee", "Dairy", "Pet food"][i]}</small></div>)}</div><div className="ds-market-products">{["🫛", "🫘", "🧀", "🍅", "🍊", "🥣"].map((e, i) => <div key={i}><span>{e}</span><small>Farm fresh</small><b>{["Green peas", "Kidney beans", "Natural cheese", "Tomato ketchup", "Orange juice", "Grain cereal"][i]}</b><strong>$2.{49 + i * 11}</strong></div>)}</div></div></section>
+      <section className="ds-section ds-market-section" id="patterns"><div className="ds-section-head"><div><span className="ds-index">05 — IN CONTEXT</span><h2>Built for the market</h2><p>Tokens come together in the familiar rhythm of the Farmart storefront.</p></div><Link href="/" className="ds-text-link">Open storefront ↗</Link></div><div className="ds-market-preview"><div className="ds-market-nav"><b>🛒 Farmart</b><span>Deals Today　　Fresh Foods　　Pantry　　More</span><span>♙　♡　🛒</span></div><div className="ds-market-banner"><div><small>FRESH FROM THE FARM</small><h3>Active Summer<br/>With Juicy Milk</h3><button className="ds-btn ds-btn-light">Shop Now　→</button></div><span>🥛</span></div><div className="ds-market-categories">{["🍋", "🥖", "🦀", "🥪", "🍾", "🫘", "🥛", "🧺"].map((e, i) => <div key={i}><span>{e}</span><small>{["Fruits", "Bakery", "Seafood", "Deli", "Drinks", "Coffee", "Dairy", "Pet food"][i]}</small></div>)}</div><div className="ds-market-products">{["🫛", "🫘", "🧀", "🍅", "🍊", "🥣"].map((e, i) => <div key={i}><span>{e}</span><small>Farm fresh</small><b>{["Green peas", "Kidney beans", "Natural cheese", "Tomato ketchup", "Orange juice", "Grain cereal"][i]}</b><strong>$2.{49 + i * 11}</strong></div>)}</div></div></section>
 
       <section className="ds-section ds-responsive" id="responsive"><div className="ds-section-head"><div><span className="ds-index">06 — ADAPTIVE DESIGN</span><h2>Room to grow</h2><p>The layout shifts from a six-column desktop market to a focused mobile shop.</p></div></div><div className="ds-breakpoints"><div><span>01</span><b>Mobile</b><small>≤ 760px</small><p>Stacked hero, 4-up categories, 3-up product cards.</p></div><div><span>02</span><b>Compact</b><small>≤ 380px</small><p>Tighter gutters; keep key shopping actions visible.</p></div><div><span>03</span><b>Desktop</b><small>&gt; 1050px</small><p>Split hero, 8 categories, 6 products per row.</p></div></div></section>
-      <footer className="ds-footer"><b>🛒 Farmart</b><span>Fresh by design. Made for everyday shopping.</span><a href="/">Back to the shop ↑</a></footer>
+      <footer className="ds-footer"><b>🛒 Farmart</b><span>Fresh by design. Made for everyday shopping.</span><Link href="/">Back to the shop ↑</Link></footer>
     </div>
   </main>;
 }

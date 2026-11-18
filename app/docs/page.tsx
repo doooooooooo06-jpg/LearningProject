@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import SwaggerUiClient from "./swagger-ui-client";
 
@@ -9,8 +10,8 @@ export const metadata: Metadata = {
 export default function ApiDocsPage() {
   return <main className="api-docs-page">
     <header className="api-docs-header">
-      <a href="/" className="api-docs-brand"><span>🛒</span><b>Farmart</b><i>API</i></a>
-      <nav><a href="/">Storefront</a><a href="/product">Product</a><a href="/design">Design system</a></nav>
+      <Link href="/" className="api-docs-brand"><span>🛒</span><b>Farmart</b><i>API</i></Link>
+      <nav><Link href="/">Storefront</Link><Link href="/product">Product</Link><Link href="/design">Design system</Link></nav>
       <a className="api-spec-link" href="/openapi.json" download>Download OpenAPI JSON ↓</a>
     </header>
     <section className="api-docs-intro">

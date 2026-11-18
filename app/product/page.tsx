@@ -1,10 +1,28 @@
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+import { getProductDetailById } from "../../lib/database";
 import ProductDetail from "./product-detail";
 
-export const metadata = {
-  title: "Organic Tomato Soup | Farmart",
-  description: "Farmart organic tomato soup, made with ripe farm tomatoes and simple ingredients.",
-};
+type ProductPageProps = { searchParams: Promise<{ productId?: string | string[] }> };
 
-export default function ProductPage() {
-  return <ProductDetail />;
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ searchParams }: ProductPageProps): Promise<Metadata> {
+  const { productId } = await searchParams;
+  if (productId === undefined) return { title: "Product | Farmart" };
+  if (typeof productId !== "string" || !productId) return { title: "Product not found | Farmart" };
+  const product = getProductDetailById(productId);
+  return { title: product ? `${product.name} | Farmart` : "Product not found | Farmart" };
+}
+
+export default async function ProductPage({ searchParams }: ProductPageProps) {
+  const { productId } = await searchParams;
+  if (productId === undefined) redirect("/product?productId=soup-tomato-organic");
+  if (typeof productId !== "string" || !productId) notFound();
+
+  const product = getProductDetailById(productId);
+  if (!product) notFound();
+
+  return <ProductDetail key={product.id} product={product} />;
 }

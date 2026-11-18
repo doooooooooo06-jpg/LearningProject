@@ -5,6 +5,34 @@ import { DatabaseSync } from "node:sqlite";
 type Row = Record<string, string | number | null>;
 
 const globalDatabase = globalThis as typeof globalThis & { farmartDatabase?: DatabaseSync };
+const latestSchemaVersion = 1;
+
+export type ProductVariant = { id: string; label: string; priceCents: number };
+export type NutritionDetails = { servingSize: string; facts: { label: string; value: string }[] };
+
+function migrateDatabase(database: DatabaseSync) {
+  const { user_version: version } = database.prepare("PRAGMA user_version").get() as { user_version: number };
+  if (version > latestSchemaVersion) throw new Error(`Database schema version ${version} is newer than this application supports.`);
+  if (version === latestSchemaVersion) return;
+
+  database.exec("BEGIN IMMEDIATE;");
+  try {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS product_details (
+        product_id TEXT PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
+        image_urls_json TEXT,
+        ingredients TEXT,
+        nutrition_facts_json TEXT,
+        variants_json TEXT
+      );
+      PRAGMA user_version = ${latestSchemaVersion};
+      COMMIT;
+    `);
+  } catch (error) {
+    database.exec("ROLLBACK;");
+    throw error;
+  }
+}
 
 function openDatabase() {
   if (globalDatabase.farmartDatabase) return globalDatabase.farmartDatabase;
@@ -61,6 +89,7 @@ function openDatabase() {
     CREATE INDEX IF NOT EXISTS products_brand_idx ON products(brand COLLATE NOCASE);
   `);
 
+  migrateDatabase(database);
   seedDatabase(database);
   globalDatabase.farmartDatabase = database;
   return database;
@@ -110,6 +139,28 @@ function seedDatabase(database: DatabaseSync) {
     INSERT OR IGNORE INTO storefront_hero (id, eyebrow, title, image_url, href, cta_label)
     VALUES (1, 'FRESH FROM THE FARM', 'Active Summer With Juicy Milk 300ml', '/images/summer-milk.webp', '/collections/summer', 'Shop Now')
   `).run();
+
+  database.prepare(`
+    INSERT OR IGNORE INTO product_details (product_id, ingredients, nutrition_facts_json, variants_json)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    "soup-tomato-organic",
+    "Organic tomatoes (72%), filtered water, organic onion, organic extra virgin olive oil, organic basil, sea salt, organic garlic, black pepper.",
+    JSON.stringify({
+      servingSize: "1 cup (240 ml) · About 1.5 servings per jar",
+      facts: [
+        { label: "Calories", value: "110" },
+        { label: "Total fat", value: "4g" },
+        { label: "Sodium", value: "380mg" },
+        { label: "Total sugars", value: "11g" },
+        { label: "Protein", value: "3g" },
+      ],
+    }),
+    JSON.stringify([
+      { id: "400-ml", label: "400 ml", priceCents: 349 },
+      { id: "6-pack", label: "6 pack", priceCents: 1899 },
+    ]),
+  );
 }
 
 export type ProductRecord = {
@@ -127,6 +178,67 @@ export type ProductRecord = {
   icon: string;
   surface: string;
 };
+
+export type ProductDetailRecord = ProductRecord & {
+  category_name: string;
+  image_urls_json: string | null;
+  ingredients: string | null;
+  nutrition_facts_json: string | null;
+  variants_json: string | null;
+};
+
+export type ProductDetail = Omit<ProductRecord, "category_id"> & {
+  categoryId: string;
+  categoryName: string;
+  images: string[];
+  ingredients: string | null;
+  nutrition: NutritionDetails | null;
+  variants: ProductVariant[] | null;
+};
+
+function parseImages(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const images: unknown = JSON.parse(value);
+    if (!Array.isArray(images)) return [];
+    return images.filter((image): image is string =>
+      typeof image === "string" && image.startsWith("/") && !image.startsWith("//") && !image.includes(".."),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function parseVariants(value: string | null): ProductVariant[] | null {
+  if (!value) return null;
+  try {
+    const variants: unknown = JSON.parse(value);
+    if (!Array.isArray(variants)) return null;
+    const validVariants = variants.filter((variant): variant is ProductVariant =>
+      typeof variant === "object" && variant !== null &&
+      typeof (variant as ProductVariant).id === "string" &&
+      typeof (variant as ProductVariant).label === "string" &&
+      Number.isSafeInteger((variant as ProductVariant).priceCents) && (variant as ProductVariant).priceCents >= 0,
+    );
+    return validVariants.length === variants.length && validVariants.length > 0 ? validVariants : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseNutrition(value: string | null): NutritionDetails | null {
+  if (!value) return null;
+  try {
+    const nutrition: unknown = JSON.parse(value);
+    if (typeof nutrition !== "object" || nutrition === null) return null;
+    const details = nutrition as NutritionDetails;
+    if (typeof details.servingSize !== "string" || !Array.isArray(details.facts) ||
+      !details.facts.every((fact) => typeof fact.label === "string" && typeof fact.value === "string")) return null;
+    return details;
+  } catch {
+    return null;
+  }
+}
 
 export function toProduct(row: ProductRecord) {
   return {
@@ -161,6 +273,38 @@ export function getProductById(id: string) {
   return openDatabase().prepare("SELECT * FROM products WHERE id = ?").get(id) as ProductRecord | undefined;
 }
 
+export function getProductDetailById(id: string): ProductDetail | undefined {
+  const row = openDatabase().prepare(`
+    SELECT p.*, c.name AS category_name, d.image_urls_json, d.ingredients, d.nutrition_facts_json, d.variants_json
+    FROM products p
+    JOIN categories c ON c.id = p.category_id
+    LEFT JOIN product_details d ON d.product_id = p.id
+    WHERE p.id = ?
+  `).get(id) as ProductDetailRecord | undefined;
+  if (!row) return undefined;
+
+  return {
+    id: row.id,
+    categoryId: row.category_id,
+    categoryName: row.category_name,
+    name: row.name,
+    brand: row.brand,
+    subtitle: row.subtitle,
+    description: row.description,
+    price_cents: row.price_cents,
+    compare_at_cents: row.compare_at_cents,
+    rating: row.rating,
+    review_count: row.review_count,
+    availability: row.availability,
+    icon: row.icon,
+    surface: row.surface,
+    images: parseImages(row.image_urls_json),
+    ingredients: row.ingredients?.trim() || null,
+    nutrition: parseNutrition(row.nutrition_facts_json),
+    variants: parseVariants(row.variants_json),
+  };
+}
+
 export function getCategories() {
   const rows = openDatabase().prepare(`
     SELECT c.id, c.name, c.icon, COUNT(p.id) AS productCount
@@ -190,7 +334,8 @@ export type ProductSearch = {
   q?: string;
   categoryId?: string;
   collection?: string;
-  sort: "relevance" | "price-asc" | "price-desc" | "rating" | "newest";
+  onSale?: boolean;
+  sort: "relevance" | "price-asc" | "price-desc" | "rating" | "newest" | "discount-desc";
   page: number;
   limit: number;
 };
@@ -200,9 +345,9 @@ export function searchProducts(options: ProductSearch) {
   const conditions: string[] = [];
   const values: (string | number)[] = [];
   if (options.q) {
-    conditions.push("(instr(lower(p.name), lower(?)) > 0 OR instr(lower(p.brand), lower(?)) > 0 OR instr(lower(p.subtitle), lower(?)) > 0)");
+    conditions.push("(instr(lower(p.name), lower(?)) > 0 OR instr(lower(p.brand), lower(?)) > 0 OR instr(lower(p.subtitle), lower(?)) > 0 OR instr(lower(p.description), lower(?)) > 0)");
     const term = options.q;
-    values.push(term, term, term);
+    values.push(term, term, term, term);
   }
   if (options.categoryId) {
     conditions.push("p.category_id = ?");
@@ -212,6 +357,7 @@ export function searchProducts(options: ProductSearch) {
     conditions.push("EXISTS (SELECT 1 FROM collection_products cp WHERE cp.product_id = p.id AND cp.collection_id = ?)");
     values.push(options.collection);
   }
+  if (options.onSale) conditions.push("p.compare_at_cents > p.price_cents");
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const sort = {
@@ -220,6 +366,7 @@ export function searchProducts(options: ProductSearch) {
     "price-desc": "p.price_cents DESC",
     rating: "p.rating DESC, p.review_count DESC",
     newest: "p.created_at DESC, p.name COLLATE NOCASE ASC",
+    "discount-desc": "CASE WHEN p.compare_at_cents > p.price_cents THEN 1.0 * (p.compare_at_cents - p.price_cents) / p.compare_at_cents ELSE 0 END DESC, p.price_cents ASC",
   }[options.sort];
   const totalRow = database.prepare(`SELECT COUNT(*) AS total FROM products p ${where}`).get(...values) as { total: number };
   const rows = database.prepare(`SELECT p.* FROM products p ${where} ORDER BY ${sort} LIMIT ? OFFSET ?`).all(...values, options.limit, (options.page - 1) * options.limit) as unknown as ProductRecord[];
