@@ -1,0 +1,279 @@
+{
+  "openapi": "3.1.2",
+  "info": {
+    "title": "Farmart Storefront API",
+    "version": "1.0.0",
+    "summary": "Proposed API contract for the Farmart Next.js storefront.",
+    "description": "API specification based on the Farmart storefront and product detail screens. The storefront, category, and product listing/search GET operations are implemented with SQLite. Other operations remain proposed contracts. Dates use ISO 8601; prices are represented as decimal strings to avoid floating-point rounding."
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Farmart API base path (proposed)"
+    }
+  ],
+  "tags": [
+    { "name": "Storefront", "description": "Homepage merchandising and discovery." },
+    { "name": "Catalog", "description": "Products, categories, and reviews." },
+    { "name": "Basket", "description": "Shopping basket operations." },
+    { "name": "Wishlist", "description": "Saved products." },
+    { "name": "Delivery", "description": "Delivery availability and estimates." },
+    { "name": "Marketing", "description": "Newsletter subscriptions." }
+  ],
+  "paths": {
+    "/storefront": {
+      "get": {
+        "tags": ["Storefront"],
+        "summary": "Get homepage content",
+        "operationId": "getStorefront",
+        "responses": {
+          "200": {
+            "description": "Homepage sections and featured products.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Storefront" },
+                "example": {
+                  "hero": { "eyebrow": "FRESH FROM THE FARM", "title": "Active Summer With Juicy Milk", "imageUrl": "/images/summer-milk.webp", "href": "/collections/summer", "ctaLabel": "Shop Now" },
+                  "sections": [
+                    { "id": "top-saver", "title": "Top Saver Today", "productIds": ["soup-tomato-organic"] },
+                    { "id": "best-seller", "title": "Best Seller", "productIds": ["soup-tomato-organic"] }
+                  ]
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/api/hello": {
+      "servers": [{ "url": "/", "description": "Next.js application root" }],
+      "get": {
+        "tags": ["Storefront"],
+        "summary": "Health check greeting",
+        "description": "Existing sample route in the Next.js application. This endpoint is not part of the proposed /api/v1 storefront contract.",
+        "operationId": "getHello",
+        "responses": {
+          "200": {
+            "description": "Greeting response.",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "required": ["message"], "properties": { "message": { "type": "string" } } },
+                "example": { "message": "Hello, Next.js!" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "List product categories",
+        "operationId": "listCategories",
+        "parameters": [
+          { "name": "parentId", "in": "query", "schema": { "type": "string" }, "description": "Return only children of this category." }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories for storefront navigation.",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Category" } } } }
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "Search and list products",
+        "operationId": "listProducts",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string", "maxLength": 120 }, "description": "Search product names, brands, and descriptions." },
+          { "name": "categoryId", "in": "query", "schema": { "type": "string" } },
+          { "name": "collection", "in": "query", "schema": { "type": "string", "enum": ["top-saver", "best-seller", "just-landing"] } },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["relevance", "price-asc", "price-desc", "rating", "newest"], "default": "relevance" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 24 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated matching products.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductPage" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/products/{productId}": {
+      "parameters": [
+        { "name": "productId", "in": "path", "required": true, "schema": { "type": "string" }, "example": "soup-tomato-organic" }
+      ],
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "Get product detail",
+        "operationId": "getProduct",
+        "responses": {
+          "200": { "description": "Product and purchasable variants.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductDetail" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/products/{productId}/reviews": {
+      "parameters": [
+        { "name": "productId", "in": "path", "required": true, "schema": { "type": "string" } }
+      ],
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "List product reviews",
+        "operationId": "listProductReviews",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated reviews and aggregate rating.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewPage" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "tags": ["Catalog"],
+        "summary": "Submit a product review",
+        "operationId": "createProductReview",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewInput" } } } },
+        "responses": {
+          "201": { "description": "Review submitted for moderation.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Review" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/basket": {
+      "get": {
+        "tags": ["Basket"],
+        "summary": "Get the current basket",
+        "operationId": "getBasket",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Current basket contents and totals.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Basket" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/basket/items": {
+      "post": {
+        "tags": ["Basket"],
+        "summary": "Add a product variant to the basket",
+        "operationId": "addBasketItem",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BasketItemInput" } } } },
+        "responses": {
+          "200": { "description": "Updated basket.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Basket" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/basket/items/{itemId}": {
+      "parameters": [
+        { "name": "itemId", "in": "path", "required": true, "schema": { "type": "string" } }
+      ],
+      "patch": {
+        "tags": ["Basket"],
+        "summary": "Change basket item quantity",
+        "operationId": "updateBasketItem",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["quantity"], "properties": { "quantity": { "type": "integer", "minimum": 1, "maximum": 99 } } } } } },
+        "responses": {
+          "200": { "description": "Updated basket.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Basket" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Basket"],
+        "summary": "Remove an item from the basket",
+        "operationId": "removeBasketItem",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Updated basket.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Basket" } } } }, "401": { "$ref": "#/components/responses/Unauthorized" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/wishlist/items": {
+      "get": {
+        "tags": ["Wishlist"],
+        "summary": "Get saved products",
+        "operationId": "getWishlist",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Products saved by the current customer.", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } } } }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      },
+      "post": {
+        "tags": ["Wishlist"],
+        "summary": "Save a product",
+        "operationId": "saveWishlistItem",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["productId"], "properties": { "productId": { "type": "string" } } } } } },
+        "responses": { "201": { "description": "Product saved." }, "401": { "$ref": "#/components/responses/Unauthorized" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/wishlist/items/{productId}": {
+      "delete": {
+        "tags": ["Wishlist"],
+        "summary": "Remove a saved product",
+        "operationId": "removeWishlistItem",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "productId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "204": { "description": "Product removed." }, "401": { "$ref": "#/components/responses/Unauthorized" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/delivery/quotes": {
+      "post": {
+        "tags": ["Delivery"],
+        "summary": "Estimate delivery for a postal code",
+        "operationId": "getDeliveryQuote",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["postalCode"], "properties": { "postalCode": { "type": "string", "minLength": 3, "maxLength": 12 }, "basketSubtotal": { "$ref": "#/components/schemas/Money" } } } } } },
+        "responses": { "200": { "description": "Delivery availability and estimate.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DeliveryQuote" } } } }, "400": { "$ref": "#/components/responses/BadRequest" } }
+      }
+    },
+    "/newsletter/subscriptions": {
+      "post": {
+        "tags": ["Marketing"],
+        "summary": "Subscribe an email address to market updates",
+        "operationId": "subscribeNewsletter",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email"], "properties": { "email": { "type": "string", "format": "email", "maxLength": 254 }, "consent": { "type": "boolean", "default": false } } } } } },
+        "responses": { "201": { "description": "Subscription created.", "content": { "application/json": { "schema": { "type": "object", "required": ["status"], "properties": { "status": { "type": "string", "enum": ["subscribed", "pending_confirmation"] } } } } } }, "400": { "$ref": "#/components/responses/BadRequest" }, "409": { "description": "Email is already subscribed." } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Proposed customer authentication. Basket and wishlist APIs require a customer session." }
+    },
+    "schemas": {
+      "Money": { "type": "object", "required": ["amount", "currency"], "properties": { "amount": { "type": "string", "pattern": "^\\d+\\.\\d{2}$", "examples": ["3.49"] }, "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "examples": ["USD"] } } },
+      "Image": { "type": "object", "required": ["url", "alt"], "properties": { "url": { "type": "string", "format": "uri-reference" }, "alt": { "type": "string" }, "role": { "type": "string", "enum": ["primary", "gallery"] } } },
+      "Category": { "type": "object", "required": ["id", "name"], "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "parentId": { "type": ["string", "null"] }, "image": { "$ref": "#/components/schemas/Image" }, "productCount": { "type": "integer", "minimum": 0 } } },
+      "Product": { "type": "object", "required": ["id", "name", "brand", "price", "availability"], "properties": { "id": { "type": "string", "examples": ["soup-tomato-organic"] }, "name": { "type": "string" }, "brand": { "type": "string" }, "subtitle": { "type": "string" }, "price": { "$ref": "#/components/schemas/Money" }, "compareAtPrice": { "$ref": "#/components/schemas/Money" }, "rating": { "type": "number", "minimum": 0, "maximum": 5 }, "reviewCount": { "type": "integer", "minimum": 0 }, "availability": { "type": "string", "enum": ["in_stock", "low_stock", "out_of_stock"] }, "images": { "type": "array", "items": { "$ref": "#/components/schemas/Image" } }, "badges": { "type": "array", "items": { "type": "string" } }, "icon": { "type": "string", "description": "Temporary emoji product illustration used until production images are available." }, "surface": { "type": "string", "enum": ["mint", "rose", "cream", "red", "orange", "blue"] } } },
+      "ProductDetail": { "allOf": [{ "$ref": "#/components/schemas/Product" }, { "type": "object", "properties": { "description": { "type": "string" }, "ingredients": { "type": "array", "items": { "type": "string" } }, "nutrition": { "type": "array", "items": { "$ref": "#/components/schemas/NutritionFact" } }, "origin": { "type": "string" }, "storageInstructions": { "type": "string" }, "variants": { "type": "array", "items": { "$ref": "#/components/schemas/ProductVariant" } }, "relatedProducts": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } } }] },
+      "ProductVariant": { "type": "object", "required": ["id", "label", "price"], "properties": { "id": { "type": "string" }, "label": { "type": "string", "examples": ["400 ml"] }, "price": { "$ref": "#/components/schemas/Money" }, "availability": { "type": "string", "enum": ["in_stock", "low_stock", "out_of_stock"] } } },
+      "NutritionFact": { "type": "object", "required": ["name", "value"], "properties": { "name": { "type": "string" }, "value": { "type": "string" }, "unit": { "type": "string" } } },
+      "ProductPage": { "type": "object", "required": ["items", "page", "limit", "total"], "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } }, "page": { "type": "integer" }, "limit": { "type": "integer" }, "total": { "type": "integer" }, "totalPages": { "type": "integer" } } },
+      "Review": { "type": "object", "required": ["id", "rating", "title", "body", "createdAt"], "properties": { "id": { "type": "string" }, "authorName": { "type": "string" }, "rating": { "type": "integer", "minimum": 1, "maximum": 5 }, "title": { "type": "string", "maxLength": 120 }, "body": { "type": "string", "maxLength": 3000 }, "verifiedPurchase": { "type": "boolean" }, "createdAt": { "type": "string", "format": "date-time" } } },
+      "ReviewInput": { "type": "object", "required": ["rating", "title", "body"], "properties": { "rating": { "type": "integer", "minimum": 1, "maximum": 5 }, "title": { "type": "string", "minLength": 3, "maxLength": 120 }, "body": { "type": "string", "minLength": 10, "maxLength": 3000 } } },
+      "ReviewPage": { "type": "object", "required": ["items", "averageRating", "total"], "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Review" } }, "averageRating": { "type": "number", "minimum": 0, "maximum": 5 }, "total": { "type": "integer" }, "page": { "type": "integer" }, "totalPages": { "type": "integer" } } },
+      "BasketItemInput": { "type": "object", "required": ["productId", "variantId", "quantity"], "properties": { "productId": { "type": "string" }, "variantId": { "type": "string" }, "quantity": { "type": "integer", "minimum": 1, "maximum": 99 } } },
+      "BasketItem": { "type": "object", "required": ["id", "product", "variant", "quantity", "lineTotal"], "properties": { "id": { "type": "string" }, "product": { "$ref": "#/components/schemas/Product" }, "variant": { "$ref": "#/components/schemas/ProductVariant" }, "quantity": { "type": "integer", "minimum": 1 }, "lineTotal": { "$ref": "#/components/schemas/Money" } } },
+      "Basket": { "type": "object", "required": ["id", "items", "subtotal", "currency"], "properties": { "id": { "type": "string" }, "items": { "type": "array", "items": { "$ref": "#/components/schemas/BasketItem" } }, "subtotal": { "$ref": "#/components/schemas/Money" }, "currency": { "type": "string" }, "itemCount": { "type": "integer" } } },
+      "DeliveryQuote": { "type": "object", "required": ["available", "estimatedDate", "fee", "freeDeliveryThreshold"], "properties": { "available": { "type": "boolean" }, "estimatedDate": { "type": "string", "format": "date" }, "fee": { "$ref": "#/components/schemas/Money" }, "freeDeliveryThreshold": { "$ref": "#/components/schemas/Money" }, "message": { "type": "string" } } },
+      "Error": { "type": "object", "required": ["code", "message"], "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "details": { "type": "array", "items": { "type": "object", "properties": { "field": { "type": "string" }, "issue": { "type": "string" } } } } } },
+      "Storefront": { "type": "object", "required": ["hero", "sections"], "properties": { "hero": { "type": "object", "required": ["title", "href"], "properties": { "eyebrow": { "type": "string" }, "title": { "type": "string" }, "imageUrl": { "type": "string", "format": "uri-reference" }, "href": { "type": "string" }, "ctaLabel": { "type": "string" } } }, "categories": { "type": "array", "items": { "$ref": "#/components/schemas/Category" } }, "sections": { "type": "array", "items": { "type": "object", "required": ["id", "title", "productIds"], "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "productIds": { "type": "array", "items": { "type": "string" } } } } } } }
+    },
+    "responses": {
+      "BadRequest": { "description": "Request parameters or body are invalid.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Unauthorized": { "description": "Authentication is required or invalid.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound": { "description": "The requested resource does not exist.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "InternalError": { "description": "Unexpected server error.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+    }
+  }
+}
