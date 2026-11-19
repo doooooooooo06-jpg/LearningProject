@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -38,7 +39,9 @@ function openDatabase() {
   if (globalDatabase.farmartDatabase) return globalDatabase.farmartDatabase;
 
   const configuredPath = process.env.FARMART_DB_PATH;
-  const databasePath = configuredPath ?? join(process.cwd(), "data", "farmart.sqlite");
+  const databasePath = configuredPath ?? (process.env.VERCEL === "1"
+    ? join(tmpdir(), "farmart.sqlite")
+    : join(process.cwd(), "data", "farmart.sqlite"));
   const dataDirectory = dirname(databasePath);
   mkdirSync(dataDirectory, { recursive: true });
   const database = new DatabaseSync(databasePath);
